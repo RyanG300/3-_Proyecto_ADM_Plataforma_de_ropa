@@ -34,3 +34,5 @@ Criterios de aceptación:
 -El cliente puede visualizar las prendas publicadas por distintos fabricantes.
 -Cada prenda muestra imagen, descripción y fabricante asociado.
 -El catálogo es accesible sin necesidad de tener un pedido activo.
+
+pruebas
