@@ -36,3 +36,4 @@ Criterios de aceptación:
 -El catálogo es accesible sin necesidad de tener un pedido activo.
 
 pruebas
+pruebas 2
