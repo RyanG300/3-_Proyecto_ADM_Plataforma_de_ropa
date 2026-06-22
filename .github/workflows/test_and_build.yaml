@@ -35,7 +35,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           push: true
-          tags: RyanG300/3-_Proyecto_ADM_Plataforma_de_ropa:latest
+          tags: ghcr.io/ryang300/3-proyecto-adm-plataforma-de-ropa:latest
