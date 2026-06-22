@@ -28,3 +28,14 @@ jobs:
 
       - name: Build project
         run: cd modaINC && npm run build
+      - name: Login to github container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/RyanG300/3-_Proyecto_ADM_Plataforma_de_ropa:latest
