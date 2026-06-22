@@ -35,8 +35,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           push: true
-          run: cd modaINC
-          tags: ghcr.io/RyanG300/3-_Proyecto_ADM_Plataforma_de_ropa:latest
+          tags: RyanG300/3-_Proyecto_ADM_Plataforma_de_ropa:latest
