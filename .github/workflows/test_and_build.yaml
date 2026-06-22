@@ -38,4 +38,5 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           push: true
+          run: cd modaINC
           tags: ghcr.io/RyanG300/3-_Proyecto_ADM_Plataforma_de_ropa:latest
