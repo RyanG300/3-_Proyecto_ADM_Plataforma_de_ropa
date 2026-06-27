@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react'
 
-export default function ShowcasePage({ showcase, onBack }) {
+export default function ShowcasePage({
+  showcase,
+  currentUser,
+  onBack,
+  onGoLogin,
+  onCustomizeDesign,
+}) {
   const [selectedDesignId, setSelectedDesignId] = useState(null)
 
   const selectedDesign = useMemo(() => {
@@ -93,13 +99,11 @@ export default function ShowcasePage({ showcase, onBack }) {
         </p>
 
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_0.95fr]">
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid content-start gap-3 md:grid-cols-2">
           {showcase.designs.map((design) => (
-            <button
+            <article
               key={design.id}
-              type="button"
-              onClick={() => setSelectedDesignId(design.id)}
-              className="rounded-2xl border border-amber-900/10 bg-amber-50/50 p-4 text-left transition hover:-translate-y-0.5 hover:border-amber-900/30"
+              className="rounded-2xl border border-amber-900/10 bg-amber-50/50 p-4 text-left"
             >
               <div className="overflow-hidden rounded-xl border border-amber-900/15 bg-white">
                 {design.image ? (
@@ -113,7 +117,14 @@ export default function ShowcasePage({ showcase, onBack }) {
               <p className="mt-3 text-xs uppercase tracking-wide text-amber-900/75">{design.type}</p>
               <h3 className="mt-1 font-semibold text-amber-950">{design.name}</h3>
               <p className="mt-1 text-sm font-semibold text-amber-900">Desde ${design.basePrice}</p>
-            </button>
+              <button
+                type="button"
+                onClick={() => setSelectedDesignId(design.id)}
+                className="mt-3 rounded-xl border border-amber-900/20 bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 transition hover:border-amber-900/35 hover:bg-amber-100"
+              >
+                Ver detalle
+              </button>
+            </article>
           ))}
 
             {!showcase.designs.length ? (
@@ -139,6 +150,33 @@ export default function ShowcasePage({ showcase, onBack }) {
                   )}
                 </div>
                 <p className="text-sm text-amber-900/80">Precio base: ${selectedDesign.basePrice}</p>
+
+                {currentUser?.role === 'cliente' ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onCustomizeDesign?.({
+                        showcaseId: showcase.id,
+                        designId: selectedDesign.id,
+                      })
+                    }
+                    className="rounded-xl bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-800"
+                  >
+                    Personalizar este diseño
+                  </button>
+                ) : !currentUser ? (
+                  <button
+                    type="button"
+                    onClick={onGoLogin}
+                    className="rounded-xl bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-800"
+                  >
+                    Iniciar sesión como cliente
+                  </button>
+                ) : (
+                  <p className="rounded-xl bg-amber-100 px-3 py-2 text-xs text-amber-900/85">
+                    Solo las cuentas de cliente pueden personalizar y generar pedidos.
+                  </p>
+                )}
 
                 <div className="grid gap-2">
                   <p className="text-sm font-semibold text-amber-950">Modificaciones ofrecidas</p>

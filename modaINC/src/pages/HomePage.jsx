@@ -1,8 +1,16 @@
 import CatalogSection from '../components/catalog/CatalogSection'
 import Hero from '../components/layout/Hero'
 import ManufacturersSection from '../components/manufacturer/ManufacturersSection'
+import SuggestedManufacturers from '../components/manufacturer/SuggestedManufacturers'
 
-export default function HomePage({ catalog, manufacturers, onGoLogin, onOpenShowcase }) {
+export default function HomePage({
+  catalog,
+  manufacturers,
+  currentUser,
+  suggestedManufacturers,
+  onGoLogin,
+  onOpenShowcase,
+}) {
   return (
     <div className="grid gap-4">
       <Hero />
@@ -25,8 +33,17 @@ export default function HomePage({ catalog, manufacturers, onGoLogin, onOpenShow
         </div>
       </section>
 
+      <SuggestedManufacturers
+        suggestions={suggestedManufacturers}
+        onOpenShowcase={onOpenShowcase}
+      />
+
       <CatalogSection catalog={catalog} />
-      <ManufacturersSection manufacturers={manufacturers} onOpenShowcase={onOpenShowcase} />
+      <ManufacturersSection
+        manufacturers={manufacturers}
+        currentUser={currentUser}
+        onOpenShowcase={onOpenShowcase}
+      />
     </div>
   )
 }

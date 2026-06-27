@@ -7,10 +7,14 @@ export default function DashboardPage({
   users,
   showcases,
   catalog,
+  orders,
   auditLog,
   updateUser,
   deleteUser,
   updateShowcase,
+  updateMeasures,
+  updatePreferences,
+  createOrder,
   createAdminByPrincipal,
 }) {
   if (!currentUser) {
@@ -41,10 +45,20 @@ export default function DashboardPage({
       <FabricantePanel
         currentUser={currentUser}
         showcases={showcases}
+        orders={orders}
         updateShowcase={updateShowcase}
       />
     )
   }
 
-  return <ClientePanel currentUser={currentUser} />
+  return (
+    <ClientePanel
+      currentUser={currentUser}
+      catalog={catalog}
+      orders={orders}
+      updateMeasures={updateMeasures}
+      updatePreferences={updatePreferences}
+      createOrder={createOrder}
+    />
+  )
 }

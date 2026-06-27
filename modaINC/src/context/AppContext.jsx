@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { initialShowcases, initialUsers } from '../data/mockData'
+import { garmentTypesOf, suggestManufacturers } from '../lib/manufacturerQueries'
 
 const AppContext = createContext(null)
 const STORAGE_KEY = 'modainc-prototype-state-v1'
@@ -71,6 +72,8 @@ function normalizeDesign(design) {
 function normalizeShowcase(showcase) {
   return {
     ...showcase,
+    location: showcase.location ?? '',
+    styles: Array.isArray(showcase.styles) ? showcase.styles : [],
     designs: Array.isArray(showcase.designs)
       ? showcase.designs.map(normalizeDesign)
       : [],
@@ -103,6 +106,7 @@ function loadPersistedState() {
       users: Array.isArray(parsed.users) ? parsed.users : null,
       showcases: Array.isArray(parsed.showcases) ? parsed.showcases : null,
       auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : null,
+      orders: Array.isArray(parsed.orders) ? parsed.orders : null,
       sessionUserId:
         typeof parsed.sessionUserId === 'string' || parsed.sessionUserId === null
           ? parsed.sessionUserId
@@ -121,6 +125,7 @@ export function AppProvider({ children }) {
     normalizeShowcases(persisted?.showcases ?? initialShowcases),
   )
   const [sessionUserId, setSessionUserId] = useState(persisted?.sessionUserId ?? null)
+  const [orders, setOrders] = useState(persisted?.orders ?? [])
   const [auditLog, setAuditLog] = useState(
     persisted?.auditLog ?? [`[${nowStamp()}] Sistema iniciado con datos de prototipo`],
   )
@@ -142,11 +147,12 @@ export function AppProvider({ children }) {
       users,
       showcases,
       auditLog,
+      orders,
       sessionUserId,
     }
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist))
-  }, [users, showcases, auditLog, sessionUserId])
+  }, [users, showcases, auditLog, orders, sessionUserId])
 
   const catalog = useMemo(() => {
     return showcases
@@ -168,6 +174,7 @@ export function AppProvider({ children }) {
       .filter((showcase) => showcase.published)
       .map((showcase) => ({
         ...showcase,
+        garmentTypes: garmentTypesOf(showcase),
         owner: users.find((user) => user.id === showcase.manufacturerId) ?? null,
       }))
   }, [showcases, users])
@@ -312,19 +319,129 @@ export function AppProvider({ children }) {
     }
   }
 
+  // HU-08: registrar y actualizar medidas corporales en el perfil del cliente.
+  const updateMeasures = (userId, measures) => {
+    const target = users.find((user) => user.id === userId)
+    if (!target) {
+      return { ok: false, message: 'No se encontró el usuario.' }
+    }
+
+    const sanitized = Object.fromEntries(
+      Object.entries(measures ?? {}).map(([key, value]) => [key, Number(value) || 0]),
+    )
+
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === userId
+          ? { ...user, measures: { ...(user.measures ?? {}), ...sanitized } }
+          : user,
+      ),
+    )
+
+    appendLog(`Medidas corporales actualizadas: ${target.email}`)
+    return { ok: true, message: 'Medidas guardadas correctamente.' }
+  }
+
+  // HU-07: actualizar las preferencias del cliente que alimentan las sugerencias.
+  const updatePreferences = (userId, preferences) => {
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === userId
+          ? {
+              ...user,
+              preferences: {
+                garmentTypes: preferences.garmentTypes ?? [],
+                styles: preferences.styles ?? [],
+              },
+            }
+          : user,
+      ),
+    )
+    return { ok: true, message: 'Preferencias actualizadas.' }
+  }
+
+  // HU-09 + HU-08: generar un pedido que registra las personalizaciones elegidas
+  // y vincula automáticamente las medidas guardadas del cliente.
+  const createOrder = ({
+    clientId,
+    design,
+    selectedModifications,
+    linkMeasures = true,
+    measures = null,
+  }) => {
+    const client = users.find((user) => user.id === clientId)
+    if (!client) {
+      return { ok: false, message: 'Cliente no válido para generar el pedido.' }
+    }
+    if (!design) {
+      return { ok: false, message: 'Selecciona un diseño antes de generar el pedido.' }
+    }
+
+    const modifications = selectedModifications ?? []
+    const extrasTotal = modifications.reduce(
+      (total, item) => total + (Number(item.extraCost) || 0),
+      0,
+    )
+
+    const explicitMeasures =
+      measures && typeof measures === 'object'
+        ? Object.fromEntries(
+            Object.entries(measures).map(([key, value]) => [key, Number(value) || 0]),
+          )
+        : null
+
+    const order = {
+      id: `o-${Math.random().toString(36).slice(2, 9)}`,
+      clientId,
+      clientName: client.name,
+      designId: design.id,
+      designName: design.name,
+      manufacturerId: design.manufacturerId ?? null,
+      manufacturerName: design.manufacturerName ?? '',
+      basePrice: Number(design.basePrice) || 0,
+      modifications: modifications.map((item) => ({
+        id: item.id,
+        name: item.name,
+        extraCost: Number(item.extraCost) || 0,
+      })),
+      total: (Number(design.basePrice) || 0) + extrasTotal,
+      measures: explicitMeasures ?? (linkMeasures ? { ...(client.measures ?? {}) } : null),
+      status: 'recibido',
+      createdAt: nowStamp(),
+    }
+
+    setOrders((prev) => [order, ...prev])
+    appendLog(
+      `Pedido generado por ${client.email}: ${design.name} (${modifications.length} personalizaciones)`,
+    )
+
+    return { ok: true, message: 'Pedido generado correctamente.', order }
+  }
+
+  // HU-07: sugerencias para el cliente con sesión activa.
+  const suggestedManufacturers = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'cliente') return []
+    return suggestManufacturers(manufacturers, currentUser.preferences ?? {})
+  }, [currentUser, manufacturers])
+
   const value = {
     users,
     showcases,
     manufacturers,
     catalog,
+    orders,
     auditLog,
     currentUser,
+    suggestedManufacturers,
     login,
     logout,
     register,
     updateUser,
     deleteUser,
     updateShowcase,
+    updateMeasures,
+    updatePreferences,
+    createOrder,
     createAdminByPrincipal,
   }
 

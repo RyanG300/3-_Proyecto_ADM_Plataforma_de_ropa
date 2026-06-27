@@ -34,6 +34,16 @@ export const initialUsers = [
     role: 'cliente',
     active: true,
     isPrincipal: false,
+    measures: {
+      pecho: 90,
+      cintura: 74,
+      cadera: 96,
+      largo: 110,
+    },
+    preferences: {
+      garmentTypes: ['Vestido'],
+      styles: ['Elegante'],
+    },
   },
 ]
 
@@ -43,6 +53,8 @@ export const initialShowcases = [
     manufacturerId: 'u-fab-ana',
     businessName: 'Ana Costuras',
     specialty: 'Vestidos de gala y disfraces teatrales',
+    location: 'San José',
+    styles: ['Elegante', 'Fantasía', 'Teatral'],
     description:
       'Confección artesanal con ajuste premium para eventos, graduaciones y cosplay.',
     services: ['Vestidos de gala', 'Disfraces de fantasía', 'Ajustes express'],
@@ -111,6 +123,8 @@ export const initialShowcases = [
     manufacturerId: 'u-fab-carlos',
     businessName: 'Carlos Atelier',
     specialty: 'Trajes formales y vestuario corporativo',
+    location: 'Cartago',
+    styles: ['Formal', 'Clásico', 'Ejecutivo'],
     description:
       'Patrones modernos para traje de negocios, bodas y eventos empresariales.',
     services: ['Trajes a medida', 'Camisas premium', 'Uniformes elegantes'],
@@ -180,3 +194,37 @@ export const roleOptions = [
   { value: 'fabricante', label: 'Fabricante' },
   { value: 'admin', label: 'Administrador' },
 ]
+
+// HU-08: campos de medidas corporales que el cliente registra en su perfil.
+export const measureFields = [
+  { key: 'pecho', label: 'Pecho' },
+  { key: 'cintura', label: 'Cintura' },
+  { key: 'cadera', label: 'Cadera' },
+  { key: 'largo', label: 'Largo' },
+  { key: 'hombros', label: 'Hombros' },
+  { key: 'manga', label: 'Largo de manga' },
+]
+
+// HU-06 / HU-07: catálogos de estilos y ubicaciones disponibles para filtrar y
+// para que el cliente exprese sus preferencias.
+export const styleCatalog = [
+  'Elegante',
+  'Fantasía',
+  'Teatral',
+  'Formal',
+  'Clásico',
+  'Ejecutivo',
+  'Casual',
+]
+
+export const locationCatalog = [
+  'San José',
+  'Cartago',
+  'Alajuela',
+  'Heredia',
+  'Guanacaste',
+]
+
+// HU-07: tipos de prenda disponibles para que el cliente marque sus
+// preferencias (coinciden con los tipos usados en los diseños del catálogo).
+export const garmentTypeCatalog = ['Vestido', 'Disfraz', 'Traje', 'Camisa', 'Uniforme']

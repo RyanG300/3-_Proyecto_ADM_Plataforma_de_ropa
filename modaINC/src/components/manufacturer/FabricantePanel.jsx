@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { locationCatalog, styleCatalog } from '../../data/mockData'
+import ReceivedOrders from './ReceivedOrders'
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -9,10 +11,14 @@ function fileToDataUrl(file) {
   })
 }
 
-export default function FabricantePanel({ currentUser, showcases, updateShowcase }) {
+export default function FabricantePanel({ currentUser, showcases, orders = [], updateShowcase }) {
   const ownShowcase = useMemo(() => {
     return showcases.find((showcase) => showcase.manufacturerId === currentUser.id)
   }, [showcases, currentUser.id])
+
+  const ownOrders = useMemo(() => {
+    return orders.filter((order) => order.manufacturerId === currentUser.id)
+  }, [orders, currentUser.id])
 
   const [newService, setNewService] = useState('')
   const [newImage, setNewImage] = useState('')
@@ -36,6 +42,16 @@ export default function FabricantePanel({ currentUser, showcases, updateShowcase
 
   const updateField = (field, value) => {
     updateShowcase(ownShowcase.id, { [field]: value })
+  }
+
+  // HU-04: el fabricante indica qué estilos confecciona, para que esa
+  // información alimente la búsqueda y las sugerencias del cliente (HU-06/HU-07).
+  const toggleStyle = (style) => {
+    const current = ownShowcase.styles ?? []
+    const next = current.includes(style)
+      ? current.filter((item) => item !== style)
+      : [...current, style]
+    updateShowcase(ownShowcase.id, { styles: next })
   }
 
   const addService = () => {
@@ -216,6 +232,50 @@ export default function FabricantePanel({ currentUser, showcases, updateShowcase
             className="rounded-xl border border-amber-900/20 px-3 py-2"
           />
         </label>
+
+        <label className="mt-3 grid gap-1 text-sm text-amber-900 md:max-w-xs">
+          Ubicación
+          <select
+            value={ownShowcase.location ?? ''}
+            onChange={(event) => updateField('location', event.target.value)}
+            aria-label="Ubicación del escaparate"
+            className="rounded-xl border border-amber-900/20 px-3 py-2"
+          >
+            <option value="">Selecciona tu ubicación</option>
+            {locationCatalog.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <fieldset className="mt-3">
+          <legend className="text-sm text-amber-900">
+            Estilos que confeccionas
+          </legend>
+          <p className="text-xs text-amber-900/70">
+            Esto ayuda a los clientes a encontrarte por estilo en la búsqueda y en
+            las sugerencias.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {styleCatalog.map((style) => (
+              <label
+                key={style}
+                className="flex items-center gap-2 rounded-xl border border-amber-900/15 bg-amber-50/50 px-3 py-1.5 text-sm text-amber-900"
+              >
+                <input
+                  type="checkbox"
+                  checked={(ownShowcase.styles ?? []).includes(style)}
+                  onChange={() => toggleStyle(style)}
+                  aria-label={style}
+                  className="h-4 w-4 accent-amber-800"
+                />
+                {style}
+              </label>
+            ))}
+          </div>
+        </fieldset>
       </article>
 
       <article className="rounded-3xl border border-amber-900/10 bg-white p-5 md:p-6">
@@ -520,6 +580,8 @@ export default function FabricantePanel({ currentUser, showcases, updateShowcase
           })}
         </div>
       </article>
+
+      <ReceivedOrders orders={ownOrders} />
 
       {previewImage ? (
         <section className="fixed inset-0 z-30 grid place-items-center bg-amber-950/60 p-4">
