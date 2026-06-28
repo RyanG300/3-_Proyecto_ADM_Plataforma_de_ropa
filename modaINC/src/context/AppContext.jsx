@@ -107,6 +107,7 @@ function loadPersistedState() {
       showcases: Array.isArray(parsed.showcases) ? parsed.showcases : null,
       auditLog: Array.isArray(parsed.auditLog) ? parsed.auditLog : null,
       orders: Array.isArray(parsed.orders) ? parsed.orders : null,
+      messages: Array.isArray(parsed.messages) ? parsed.messages : null,
       sessionUserId:
         typeof parsed.sessionUserId === 'string' || parsed.sessionUserId === null
           ? parsed.sessionUserId
@@ -115,6 +116,24 @@ function loadPersistedState() {
   } catch {
     return null
   }
+}
+
+function mergeById(existing = [], incoming = []) {
+  const map = new Map()
+
+  existing.forEach((item) => {
+    if (item && typeof item === 'object' && typeof item.id === 'string') {
+      map.set(item.id, item)
+    }
+  })
+
+  incoming.forEach((item) => {
+    if (item && typeof item === 'object' && typeof item.id === 'string') {
+      map.set(item.id, item)
+    }
+  })
+
+  return [...map.values()]
 }
 
 export function AppProvider({ children }) {
@@ -126,6 +145,7 @@ export function AppProvider({ children }) {
   )
   const [sessionUserId, setSessionUserId] = useState(persisted?.sessionUserId ?? null)
   const [orders, setOrders] = useState(persisted?.orders ?? [])
+  const [messages, setMessages] = useState(persisted?.messages ?? [])
   const [auditLog, setAuditLog] = useState(
     persisted?.auditLog ?? [`[${nowStamp()}] Sistema iniciado con datos de prototipo`],
   )
@@ -143,16 +163,84 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
+    let mergedOrders = orders
+    let mergedMessages = messages
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object') {
+          mergedOrders = mergeById(
+            Array.isArray(parsed.orders) ? parsed.orders : [],
+            orders,
+          )
+          mergedMessages = mergeById(
+            Array.isArray(parsed.messages) ? parsed.messages : [],
+            messages,
+          )
+        }
+      }
+    } catch {
+      mergedOrders = orders
+      mergedMessages = messages
+    }
+
     const stateToPersist = {
       users,
       showcases,
       auditLog,
-      orders,
+      orders: mergedOrders,
+      messages: mergedMessages,
       sessionUserId,
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist))
-  }, [users, showcases, auditLog, orders, sessionUserId])
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToPersist))
+    } catch {
+      // Keep app functional when storage quota is exhausted.
+    }
+  }, [users, showcases, auditLog, orders, messages, sessionUserId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const syncFromStorage = (event) => {
+      if (event.key !== STORAGE_KEY || !event.newValue) return
+
+      try {
+        const parsed = JSON.parse(event.newValue)
+        if (!parsed || typeof parsed !== 'object') return
+
+        if (Array.isArray(parsed.users)) {
+          setUsers(parsed.users)
+        }
+        if (Array.isArray(parsed.showcases)) {
+          setShowcases(normalizeShowcases(parsed.showcases))
+        }
+        if (Array.isArray(parsed.orders)) {
+          setOrders(parsed.orders)
+        }
+        if (Array.isArray(parsed.messages)) {
+          setMessages(parsed.messages)
+        }
+        if (Array.isArray(parsed.auditLog)) {
+          setAuditLog(parsed.auditLog)
+        }
+        if (
+          typeof parsed.sessionUserId === 'string' ||
+          parsed.sessionUserId === null
+        ) {
+          setSessionUserId(parsed.sessionUserId)
+        }
+      } catch {
+        // Ignore malformed storage updates from other tabs.
+      }
+    }
+
+    window.addEventListener('storage', syncFromStorage)
+    return () => window.removeEventListener('storage', syncFromStorage)
+  }, [])
 
   const catalog = useMemo(() => {
     return showcases
@@ -368,6 +456,8 @@ export function AppProvider({ children }) {
     selectedModifications,
     linkMeasures = true,
     measures = null,
+    deliveryInfo = null,
+    paymentInfo = null,
   }) => {
     const client = users.find((user) => user.id === clientId)
     if (!client) {
@@ -406,6 +496,8 @@ export function AppProvider({ children }) {
       })),
       total: (Number(design.basePrice) || 0) + extrasTotal,
       measures: explicitMeasures ?? (linkMeasures ? { ...(client.measures ?? {}) } : null),
+      deliveryInfo,
+      paymentInfo,
       status: 'recibido',
       createdAt: nowStamp(),
     }
@@ -416,6 +508,61 @@ export function AppProvider({ children }) {
     )
 
     return { ok: true, message: 'Pedido generado correctamente.', order }
+  }
+
+  const sendOrderMessage = ({
+    orderId,
+    senderId,
+    type = 'text',
+    text = '',
+    mediaDataUrl = '',
+    mediaMime = '',
+    mediaName = '',
+  }) => {
+    const order = orders.find((item) => item.id === orderId)
+    if (!order) {
+      return { ok: false, message: 'El pedido seleccionado ya no existe.' }
+    }
+
+    const sender = users.find((user) => user.id === senderId)
+    if (!sender) {
+      return { ok: false, message: 'No se pudo validar tu sesión para enviar mensajes.' }
+    }
+
+    const isParticipant = senderId === order.clientId || senderId === order.manufacturerId
+    if (!isParticipant) {
+      return {
+        ok: false,
+        message: 'Solo el cliente y el fabricante del pedido pueden enviar mensajes.',
+      }
+    }
+
+    const cleanedText = text.trim()
+    const hasMedia = typeof mediaDataUrl === 'string' && mediaDataUrl.length > 0
+    if (!cleanedText && !hasMedia) {
+      return { ok: false, message: 'Debes escribir un mensaje o adjuntar un archivo.' }
+    }
+
+    const normalizedType = type === 'image' || type === 'audio' ? type : 'text'
+    const message = {
+      id: `msg-${Math.random().toString(36).slice(2, 9)}`,
+      orderId,
+      senderId,
+      senderName: sender.name,
+      senderRole: sender.role,
+      type: normalizedType,
+      text: cleanedText,
+      mediaDataUrl: hasMedia ? mediaDataUrl : '',
+      mediaMime,
+      mediaName,
+      createdAt: nowStamp(),
+      sentAt: Date.now(),
+    }
+
+    setMessages((prev) => [...prev, message])
+    appendLog(`Mensaje enviado en pedido ${order.id} por ${sender.email}`)
+
+    return { ok: true, message: 'Mensaje enviado.', chatMessage: message }
   }
 
   // HU-07: sugerencias para el cliente con sesión activa.
@@ -430,6 +577,7 @@ export function AppProvider({ children }) {
     manufacturers,
     catalog,
     orders,
+    messages,
     auditLog,
     currentUser,
     suggestedManufacturers,
@@ -442,6 +590,7 @@ export function AppProvider({ children }) {
     updateMeasures,
     updatePreferences,
     createOrder,
+    sendOrderMessage,
     createAdminByPrincipal,
   }
 

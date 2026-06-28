@@ -31,7 +31,7 @@ export default function CustomizationPage({
   onBack,
   onGoLogin,
   onSaveMeasures,
-  onCreateOrder,
+  onProceedToCheckout,
 }) {
   const selected = target?.design ?? null
   const [selectedIds, setSelectedIds] = useState([])
@@ -77,11 +77,11 @@ export default function CustomizationPage({
     setFeedback(null)
   }
 
-  const handleCreateOrder = () => {
+  const handleContinueToCheckout = () => {
     if (!currentUser || currentUser.role !== 'cliente') {
       setFeedback({
         type: 'error',
-        message: 'Debes iniciar sesión como cliente para generar el pedido.',
+        message: 'Debes iniciar sesión como cliente para continuar con el pedido.',
       })
       return
     }
@@ -91,7 +91,7 @@ export default function CustomizationPage({
     if (missing) {
       setFeedback({
         type: 'error',
-        message: 'Completa todas las medidas antes de generar el pedido.',
+        message: 'Completa todas las medidas antes de continuar.',
       })
       return
     }
@@ -118,21 +118,12 @@ export default function CustomizationPage({
       return
     }
 
-    const result = onCreateOrder?.({
+    onProceedToCheckout?.({
       design: selected,
       selectedModifications,
       measures,
+      total: estimatedPrice,
     })
-
-    if (result?.ok) {
-      setFeedback({ type: 'ok', message: result.message })
-      setSelectedIds([])
-      return
-    }
-
-    if (result) {
-      setFeedback({ type: 'error', message: result.message })
-    }
   }
 
   if (!selected) {
@@ -280,7 +271,7 @@ export default function CustomizationPage({
                 ))}
               </div>
               <p className="mt-2 text-xs text-amber-900/75">
-                Se autocompletan con tus medidas guardadas y puedes ajustarlas antes de generar.
+                Se autocompletan con tus medidas guardadas y puedes ajustarlas antes de continuar.
               </p>
             </div>
 
@@ -291,10 +282,10 @@ export default function CustomizationPage({
             {currentUser?.role === 'cliente' ? (
               <button
                 type="button"
-                onClick={handleCreateOrder}
+                onClick={handleContinueToCheckout}
                 className="rounded-xl bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-800"
               >
-                Generar pedido
+                Continuar con entrega y pago
               </button>
             ) : (
               <button

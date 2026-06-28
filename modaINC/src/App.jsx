@@ -6,17 +6,20 @@ import DashboardPage from './pages/DashboardPage'
 import LoginPage from './pages/LoginPage'
 import ShowcasePage from './pages/ShowcasePage'
 import CustomizationPage from './pages/CustomizationPage'
+import CheckoutPage from './pages/CheckoutPage'
 
 function AppContent() {
   const [view, setView] = useState('home')
   const [activeShowcaseId, setActiveShowcaseId] = useState(null)
   const [customizationTarget, setCustomizationTarget] = useState(null)
+  const [checkoutDraft, setCheckoutDraft] = useState(null)
   const {
     users,
     showcases,
     manufacturers,
     catalog,
     orders,
+    messages,
     auditLog,
     currentUser,
     suggestedManufacturers,
@@ -29,6 +32,7 @@ function AppContent() {
     updateMeasures,
     updatePreferences,
     createOrder,
+    sendOrderMessage,
     createAdminByPrincipal,
   } = useAppContext()
 
@@ -59,7 +63,20 @@ function AppContent() {
         manufacturerName: showcase.businessName,
       },
     })
+    setCheckoutDraft(null)
     setView('customization')
+  }
+
+  const openCheckout = ({ design, selectedModifications, measures, total }) => {
+    if (!design) return
+
+    setCheckoutDraft({
+      design,
+      selectedModifications: selectedModifications ?? [],
+      measures: measures ?? null,
+      total: Number(total) || 0,
+    })
+    setView('checkout')
   }
 
   const activeShowcase = manufacturers.find((item) => item.id === activeShowcaseId) ?? null
@@ -74,6 +91,7 @@ function AppContent() {
         onLogout={() => {
           logout()
           setCustomizationTarget(null)
+          setCheckoutDraft(null)
           setView('home')
         }}
       />
@@ -107,7 +125,23 @@ function AppContent() {
             onSaveMeasures={(measures) =>
               currentUser ? updateMeasures(currentUser.id, measures) : null
             }
-            onCreateOrder={({ design, selectedModifications, measures }) =>
+            onProceedToCheckout={({ design, selectedModifications, measures, total }) =>
+              openCheckout({
+                design,
+                selectedModifications,
+                measures,
+                total,
+              })
+            }
+          />
+        ) : view === 'checkout' ? (
+          <CheckoutPage
+            currentUser={currentUser}
+            draft={checkoutDraft}
+            onBackToCustomization={() => setView('customization')}
+            onBackToShowcase={() => setView('showcase')}
+            onGoLogin={() => setView('login')}
+            onConfirmOrder={({ design, selectedModifications, measures, delivery, payment }) =>
               currentUser
                 ? createOrder({
                     clientId: currentUser.id,
@@ -115,6 +149,8 @@ function AppContent() {
                     selectedModifications,
                     measures,
                     linkMeasures: false,
+                    deliveryInfo: delivery,
+                    paymentInfo: payment,
                   })
                 : { ok: false, message: 'Debes iniciar sesión como cliente.' }
             }
@@ -126,6 +162,7 @@ function AppContent() {
             showcases={showcases}
             catalog={catalog}
             orders={orders}
+            messages={messages}
             auditLog={auditLog}
             updateUser={updateUser}
             deleteUser={deleteUser}
@@ -133,6 +170,7 @@ function AppContent() {
             updateMeasures={updateMeasures}
             updatePreferences={updatePreferences}
             createOrder={createOrder}
+            sendOrderMessage={sendOrderMessage}
             createAdminByPrincipal={createAdminByPrincipal}
           />
         )}

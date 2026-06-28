@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { locationCatalog, styleCatalog } from '../../data/mockData'
+import OrderMessaging from '../messaging/OrderMessaging'
 import ReceivedOrders from './ReceivedOrders'
 
 function fileToDataUrl(file) {
@@ -11,7 +12,15 @@ function fileToDataUrl(file) {
   })
 }
 
-export default function FabricantePanel({ currentUser, showcases, orders = [], updateShowcase }) {
+export default function FabricantePanel({
+  currentUser,
+  users = [],
+  showcases,
+  orders = [],
+  messages = [],
+  sendOrderMessage,
+  updateShowcase,
+}) {
   const ownShowcase = useMemo(() => {
     return showcases.find((showcase) => showcase.manufacturerId === currentUser.id)
   }, [showcases, currentUser.id])
@@ -582,6 +591,18 @@ export default function FabricantePanel({ currentUser, showcases, orders = [], u
       </article>
 
       <ReceivedOrders orders={ownOrders} />
+
+      <OrderMessaging
+        currentUser={currentUser}
+        users={users}
+        orders={ownOrders}
+        messages={messages}
+        onSendMessage={sendOrderMessage}
+        title="Mensajes con clientes"
+        subtitle="Cada cliente que te haga un pedido aparece como contacto para conversar en la misma aplicación."
+        emptyMessage="Aún no tienes clientes para mensajear. Cuando recibas pedidos, aparecerán aquí."
+        sideLabel="Clientes"
+      />
 
       {previewImage ? (
         <section className="fixed inset-0 z-30 grid place-items-center bg-amber-950/60 p-4">

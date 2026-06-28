@@ -8,6 +8,7 @@ export default function DashboardPage({
   showcases,
   catalog,
   orders,
+  messages,
   auditLog,
   updateUser,
   deleteUser,
@@ -15,6 +16,7 @@ export default function DashboardPage({
   updateMeasures,
   updatePreferences,
   createOrder,
+  sendOrderMessage,
   createAdminByPrincipal,
 }) {
   if (!currentUser) {
@@ -44,8 +46,11 @@ export default function DashboardPage({
     return (
       <FabricantePanel
         currentUser={currentUser}
+        users={users}
         showcases={showcases}
         orders={orders}
+        messages={messages}
+        sendOrderMessage={sendOrderMessage}
         updateShowcase={updateShowcase}
       />
     )
@@ -54,11 +59,14 @@ export default function DashboardPage({
   return (
     <ClientePanel
       currentUser={currentUser}
+      users={users}
       catalog={catalog}
       orders={orders}
+      messages={messages}
       updateMeasures={updateMeasures}
       updatePreferences={updatePreferences}
       createOrder={createOrder}
+      sendOrderMessage={sendOrderMessage}
     />
   )
 }
