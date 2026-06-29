@@ -332,25 +332,23 @@ export default function OrderDetailPage({ orderId, onBack, onGoToManufacturerPro
 
   const confirmRatingPublish = () => {
     setIsSubmittingRating(true)
-    setTimeout(() => {
-      try {
-        const result = submitRating({
-          ...ratingForm,
-          orderId: order.id,
-          clientId: order.clientId,
-          manufacturerId: order.manufacturerId,
-          images: ratingImages,
-        })
-        if (!result.ok) {
-          setRatingError(result.message)
-        }
-      } catch {
-        setRatingError('Error al publicar calificación.')
-      } finally {
-        setIsSubmittingRating(false)
-        setShowRatingConfirm(false)
+    try {
+      const result = submitRating({
+        ...ratingForm,
+        orderId: order.id,
+        clientId: order.clientId,
+        manufacturerId: order.manufacturerId,
+        images: ratingImages,
+      })
+      if (!result.ok) {
+        setRatingError(result.message)
       }
-    }, 1000)
+    } catch {
+      setRatingError('Error al publicar calificación.')
+    } finally {
+      setIsSubmittingRating(false)
+      setShowRatingConfirm(false)
+    }
   }
 
   return (

@@ -4,6 +4,7 @@ import { garmentTypesOf, suggestManufacturers } from '../lib/manufacturerQueries
 
 const AppContext = createContext(null)
 const STORAGE_KEY = 'modainc-prototype-state-v1'
+const SESSION_STORAGE_KEY = 'modainc-session-user-id-v1'
 
 function inferSectionFromName(name) {
   if (typeof name !== 'string') return 'General'
@@ -198,6 +199,21 @@ function loadPersistedState() {
   }
 }
 
+function loadSessionUserId(fallback = null) {
+  if (typeof window === 'undefined') return fallback
+
+  try {
+    const fromSession = window.sessionStorage.getItem(SESSION_STORAGE_KEY)
+    if (typeof fromSession === 'string' && fromSession.trim().length > 0) {
+      return fromSession
+    }
+  } catch {
+    // Ignore session storage failures.
+  }
+
+  return fallback
+}
+
 function mergeById(existing = [], incoming = []) {
   const map = new Map()
 
@@ -224,7 +240,9 @@ export function AppProvider({ children }) {
   const [showcases, setShowcases] = useState(
     normalizeShowcases(persisted?.showcases ?? initialShowcases),
   )
-  const [sessionUserId, setSessionUserId] = useState(persisted?.sessionUserId ?? null)
+  const [sessionUserId, setSessionUserId] = useState(
+    loadSessionUserId(persisted?.sessionUserId ?? null),
+  )
   const [orders, setOrders] = useState(() => {
     if (persisted?.orders && persisted.orders.length > 0) return persisted.orders
     return isTest ? [] : [defaultMockOrder]
@@ -265,6 +283,20 @@ export function AppProvider({ children }) {
       setSessionUserId(null)
     }
   }, [sessionUserId, users])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    try {
+      if (sessionUserId) {
+        window.sessionStorage.setItem(SESSION_STORAGE_KEY, sessionUserId)
+      } else {
+        window.sessionStorage.removeItem(SESSION_STORAGE_KEY)
+      }
+    } catch {
+      // Ignore session storage failures.
+    }
+  }, [sessionUserId])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -328,7 +360,6 @@ export function AppProvider({ children }) {
       auditLog,
       orders: mergedOrders,
       messages: mergedMessages,
-      sessionUserId,
       notifications: mergedNotifications,
       orderStatusHistory: mergedOrderStatusHistory,
       deliveries: mergedDeliveries,
@@ -367,12 +398,6 @@ export function AppProvider({ children }) {
         }
         if (Array.isArray(parsed.auditLog)) {
           setAuditLog(parsed.auditLog)
-        }
-        if (
-          typeof parsed.sessionUserId === 'string' ||
-          parsed.sessionUserId === null
-        ) {
-          setSessionUserId(parsed.sessionUserId)
         }
         if (Array.isArray(parsed.notifications)) {
           setNotifications(parsed.notifications)
