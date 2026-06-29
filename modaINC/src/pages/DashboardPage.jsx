@@ -18,6 +18,8 @@ export default function DashboardPage({
   createOrder,
   sendOrderMessage,
   createAdminByPrincipal,
+  onNavigateToOrder,
+  onGoToHistory,
 }) {
   if (!currentUser) {
     return (
@@ -52,6 +54,8 @@ export default function DashboardPage({
         messages={messages}
         sendOrderMessage={sendOrderMessage}
         updateShowcase={updateShowcase}
+        onNavigateToOrder={onNavigateToOrder}
+        onGoToHistory={onGoToHistory}
       />
     )
   }
@@ -67,6 +71,8 @@ export default function DashboardPage({
       updatePreferences={updatePreferences}
       createOrder={createOrder}
       sendOrderMessage={sendOrderMessage}
+      onNavigateToOrder={onNavigateToOrder}
+      onGoToHistory={onGoToHistory}
     />
   )
 }

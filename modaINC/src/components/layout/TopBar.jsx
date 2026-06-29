@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import NotificationBell from '../sprint5/NotificationBell'
 
 const roleLabel = {
   admin: 'Administrador',
@@ -12,6 +13,9 @@ export default function TopBar({
   onGoLogin,
   onGoDashboard,
   onLogout,
+  onGoToNotifications,
+  onNavigateToOrder,
+  onGoToHistory,
 }) {
   const welcomeText = useMemo(() => {
     if (!currentUser) {
@@ -58,6 +62,21 @@ export default function TopBar({
             >
               Mi panel
             </button>
+          )}
+          {currentUser && (
+            <button
+              type="button"
+              onClick={onGoToHistory}
+              className="rounded-full border border-amber-900/20 bg-white px-3 py-1.5 text-sm font-medium text-amber-900 transition hover:-translate-y-0.5 hover:bg-amber-100"
+            >
+              Historial
+            </button>
+          )}
+          {currentUser && (
+            <NotificationBell
+              onGoToNotifications={onGoToNotifications}
+              onNavigateToOrder={onNavigateToOrder}
+            />
           )}
           {currentUser ? (
             <button

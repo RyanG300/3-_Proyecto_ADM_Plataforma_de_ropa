@@ -92,6 +92,81 @@ function nowStamp() {
   })
 }
 
+const defaultMockOrder = {
+  id: 'o-mock-1',
+  clientId: 'u-cli-lucia',
+  clientName: 'Lucía Méndez',
+  designId: 'd-ana-1',
+  designName: 'Vestido Aurora',
+  manufacturerId: 'u-fab-ana',
+  manufacturerName: 'Ana Costuras',
+  basePrice: 120,
+  modifications: [{ id: 'm-ana-1', name: 'Tejido Satén Premium', extraCost: 25 }],
+  total: 145,
+  measures: { pecho: 90, cintura: 74, cadera: 96, largo: 110 },
+  status: 'pagado',
+  createdAt: '28/06/2026, 10:00',
+}
+
+const defaultStatusHistory = [
+  {
+    id: 'osh-mock-1',
+    orderId: 'o-mock-1',
+    status: 'recibido',
+    description: 'Solicitud de confección recibida',
+    createdAt: '28/06/2026, 10:00',
+    updatedBy: 'Lucía Méndez'
+  },
+  {
+    id: 'osh-mock-2',
+    orderId: 'o-mock-1',
+    status: 'pendiente_pago',
+    description: 'Pendiente de pago por parte del cliente',
+    createdAt: '28/06/2026, 10:02',
+    updatedBy: 'Sistema'
+  },
+  {
+    id: 'osh-mock-3',
+    orderId: 'o-mock-1',
+    status: 'pagado',
+    description: 'Pago confirmado por un monto de $145.00',
+    createdAt: '28/06/2026, 10:05',
+    updatedBy: 'Sistema'
+  }
+]
+
+const defaultDeliveries = [
+  {
+    id: 'del-mock-1',
+    orderId: 'o-mock-1',
+    method: 'envio',
+    company: '',
+    trackingNumber: '',
+    status: 'pendiente_coordinacion',
+    estimatedShippingDate: '',
+    estimatedDeliveryDate: '',
+    address: 'Frente al parque central, portón rojo, San José',
+    contactName: 'Lucía Méndez',
+    contactPhone: '8888-8888',
+    notes: '',
+    cost: 0,
+  }
+]
+
+const defaultTransactions = [
+  {
+    id: 't-mock-1',
+    orderId: 'o-mock-1',
+    type: 'pago',
+    amount: 145,
+    currency: 'USD',
+    paymentMethod: 'tarjeta',
+    status: 'confirmado',
+    reference: '1234',
+    createdAt: '28/06/2026, 10:05'
+  }
+]
+
 function loadPersistedState() {
   if (typeof window === 'undefined') return null
 
@@ -112,6 +187,11 @@ function loadPersistedState() {
         typeof parsed.sessionUserId === 'string' || parsed.sessionUserId === null
           ? parsed.sessionUserId
           : null,
+      notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+      orderStatusHistory: Array.isArray(parsed.orderStatusHistory) ? parsed.orderStatusHistory : [],
+      deliveries: Array.isArray(parsed.deliveries) ? parsed.deliveries : [],
+      ratings: Array.isArray(parsed.ratings) ? parsed.ratings : [],
+      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
     }
   } catch {
     return null
@@ -138,17 +218,43 @@ function mergeById(existing = [], incoming = []) {
 
 export function AppProvider({ children }) {
   const persisted = loadPersistedState()
+  const isTest = typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.VITEST)
 
   const [users, setUsers] = useState(persisted?.users ?? initialUsers)
   const [showcases, setShowcases] = useState(
     normalizeShowcases(persisted?.showcases ?? initialShowcases),
   )
   const [sessionUserId, setSessionUserId] = useState(persisted?.sessionUserId ?? null)
-  const [orders, setOrders] = useState(persisted?.orders ?? [])
+  const [orders, setOrders] = useState(() => {
+    if (persisted?.orders && persisted.orders.length > 0) return persisted.orders
+    return isTest ? [] : [defaultMockOrder]
+  })
   const [messages, setMessages] = useState(persisted?.messages ?? [])
   const [auditLog, setAuditLog] = useState(
     persisted?.auditLog ?? [`[${nowStamp()}] Sistema iniciado con datos de prototipo`],
   )
+
+  const [notifications, setNotifications] = useState(persisted?.notifications ?? [])
+  const [orderStatusHistory, setOrderStatusHistory] = useState(() => {
+    if (persisted?.orderStatusHistory && persisted.orderStatusHistory.length > 0) return persisted.orderStatusHistory
+    return isTest ? [] : defaultStatusHistory
+  })
+  const [deliveries, setDeliveries] = useState(() => {
+    if (persisted?.deliveries && persisted.deliveries.length > 0) return persisted.deliveries
+    return isTest ? [] : defaultDeliveries
+  })
+  const [ratings, setRatings] = useState(persisted?.ratings ?? [])
+  const [transactions, setTransactions] = useState(() => {
+    if (persisted?.transactions && persisted.transactions.length > 0) return persisted.transactions
+    return isTest ? [] : defaultTransactions
+  })
+
+  const seedMockOrderForTesting = () => {
+    setOrders([defaultMockOrder])
+    setOrderStatusHistory(defaultStatusHistory)
+    setDeliveries(defaultDeliveries)
+    setTransactions(defaultTransactions)
+  }
 
   const currentUser = users.find((user) => user.id === sessionUserId) ?? null
 
@@ -165,6 +271,11 @@ export function AppProvider({ children }) {
 
     let mergedOrders = orders
     let mergedMessages = messages
+    let mergedNotifications = notifications
+    let mergedOrderStatusHistory = orderStatusHistory
+    let mergedDeliveries = deliveries
+    let mergedRatings = ratings
+    let mergedTransactions = transactions
 
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY)
@@ -179,11 +290,36 @@ export function AppProvider({ children }) {
             Array.isArray(parsed.messages) ? parsed.messages : [],
             messages,
           )
+          mergedNotifications = mergeById(
+            Array.isArray(parsed.notifications) ? parsed.notifications : [],
+            notifications
+          )
+          mergedOrderStatusHistory = mergeById(
+            Array.isArray(parsed.orderStatusHistory) ? parsed.orderStatusHistory : [],
+            orderStatusHistory
+          )
+          mergedDeliveries = mergeById(
+            Array.isArray(parsed.deliveries) ? parsed.deliveries : [],
+            deliveries
+          )
+          mergedRatings = mergeById(
+            Array.isArray(parsed.ratings) ? parsed.ratings : [],
+            ratings
+          )
+          mergedTransactions = mergeById(
+            Array.isArray(parsed.transactions) ? parsed.transactions : [],
+            transactions
+          )
         }
       }
     } catch {
       mergedOrders = orders
       mergedMessages = messages
+      mergedNotifications = notifications
+      mergedOrderStatusHistory = orderStatusHistory
+      mergedDeliveries = deliveries
+      mergedRatings = ratings
+      mergedTransactions = transactions
     }
 
     const stateToPersist = {
@@ -193,6 +329,11 @@ export function AppProvider({ children }) {
       orders: mergedOrders,
       messages: mergedMessages,
       sessionUserId,
+      notifications: mergedNotifications,
+      orderStatusHistory: mergedOrderStatusHistory,
+      deliveries: mergedDeliveries,
+      ratings: mergedRatings,
+      transactions: mergedTransactions,
     }
 
     try {
@@ -200,7 +341,7 @@ export function AppProvider({ children }) {
     } catch {
       // Keep app functional when storage quota is exhausted.
     }
-  }, [users, showcases, auditLog, orders, messages, sessionUserId])
+  }, [users, showcases, auditLog, orders, messages, sessionUserId, notifications, orderStatusHistory, deliveries, ratings, transactions])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -232,6 +373,21 @@ export function AppProvider({ children }) {
           parsed.sessionUserId === null
         ) {
           setSessionUserId(parsed.sessionUserId)
+        }
+        if (Array.isArray(parsed.notifications)) {
+          setNotifications(parsed.notifications)
+        }
+        if (Array.isArray(parsed.orderStatusHistory)) {
+          setOrderStatusHistory(parsed.orderStatusHistory)
+        }
+        if (Array.isArray(parsed.deliveries)) {
+          setDeliveries(parsed.deliveries)
+        }
+        if (Array.isArray(parsed.ratings)) {
+          setRatings(parsed.ratings)
+        }
+        if (Array.isArray(parsed.transactions)) {
+          setTransactions(parsed.transactions)
         }
       } catch {
         // Ignore malformed storage updates from other tabs.
@@ -448,6 +604,268 @@ export function AppProvider({ children }) {
     return { ok: true, message: 'Preferencias actualizadas.' }
   }
 
+  const addNotification = ({
+    userId,
+    type,
+    title,
+    message,
+    relatedEntityId = '',
+    relatedEntityType = '',
+  }) => {
+    const newNotification = {
+      id: `n-${Math.random().toString(36).slice(2, 9)}`,
+      userId,
+      type,
+      title,
+      message,
+      relatedEntityId,
+      relatedEntityType,
+      isRead: false,
+      createdAt: nowStamp(),
+    }
+    setNotifications((prev) => [newNotification, ...prev])
+  }
+
+  const markNotificationAsRead = (id) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    )
+  }
+
+  const markAllNotificationsAsRead = (userId) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.userId === userId ? { ...n, isRead: true } : n))
+    )
+  }
+
+  const deleteNotification = (id) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+  }
+
+  const updateOrderStatus = (orderId, nextStatus, observation = '', updatedBy = 'Fabricante') => {
+    const targetOrder = orders.find((o) => o.id === orderId)
+    if (!targetOrder) {
+      return { ok: false, message: 'Pedido no encontrado.' }
+    }
+
+    const orderDesignName = targetOrder.designName
+    const orderClientId = targetOrder.clientId
+    const orderClientName = targetOrder.clientName
+    const orderManufacturerId = targetOrder.manufacturerId
+    const orderTotal = targetOrder.total
+
+    setOrders((prev) =>
+      prev.map((order) => {
+        if (order.id !== orderId) return order
+        return { ...order, status: nextStatus }
+      })
+    )
+
+    // Add status history entry
+    const newHistory = {
+      id: `osh-${Math.random().toString(36).slice(2, 9)}`,
+      orderId,
+      status: nextStatus,
+      description: observation || `Estado actualizado a "${nextStatus}"`,
+      createdAt: nowStamp(),
+      updatedBy,
+    }
+    setOrderStatusHistory((prev) => [...prev, newHistory])
+
+    // Generate notifications
+    if (orderClientId) {
+      if (updatedBy !== orderClientName) {
+        // Notify client
+        addNotification({
+          userId: orderClientId,
+          type: 'cambio_estado',
+          title: 'Actualización de tu pedido',
+          message: `El estado de tu pedido "${orderDesignName}" cambió a "${nextStatus}". ${observation ? `Observación: "${observation}"` : ''}`,
+          relatedEntityId: orderId,
+          relatedEntityType: 'order',
+        })
+      } else {
+        // Notify manufacturer
+        if (orderManufacturerId) {
+          addNotification({
+            userId: orderManufacturerId,
+            type: 'cambio_estado',
+            title: 'Actualización de pedido',
+            message: `El cliente actualizó el pedido "${orderDesignName}" a "${nextStatus}".`,
+            relatedEntityId: orderId,
+            relatedEntityType: 'order',
+          })
+        }
+      }
+
+      // Trigger specific notification events
+      if (nextStatus === 'listo_para_entrega') {
+        addNotification({
+          userId: orderClientId,
+          type: 'pedido_listo',
+          title: '¡Tu prenda está lista!',
+          message: `El fabricante ha marcado tu pedido "${orderDesignName}" como listo para entrega. Coordina el envío o retiro.`,
+          relatedEntityId: orderId,
+          relatedEntityType: 'order',
+        })
+      } else if (nextStatus === 'enviado') {
+        addNotification({
+          userId: orderClientId,
+          type: 'pedido_enviado',
+          title: 'Tu pedido ha sido enviado',
+          message: `El pedido "${orderDesignName}" está en camino. Consulta los detalles de entrega.`,
+          relatedEntityId: orderId,
+          relatedEntityType: 'order',
+        })
+      } else if (nextStatus === 'entregado') {
+        addNotification({
+          userId: orderClientId,
+          type: 'pedido_entregado',
+          title: 'Pedido entregado',
+          message: `El pedido "${orderDesignName}" ha sido marcado como entregado. Por favor, califica al fabricante.`,
+          relatedEntityId: orderId,
+          relatedEntityType: 'order',
+        })
+        if (orderManufacturerId) {
+          addNotification({
+            userId: orderManufacturerId,
+            type: 'pedido_entregado',
+            title: 'Recepción confirmada',
+            message: `El cliente ha confirmado la recepción del pedido "${orderDesignName}".`,
+            relatedEntityId: orderId,
+            relatedEntityType: 'order',
+          })
+        }
+      }
+    }
+
+    appendLog(`Estado del pedido ${orderId} actualizado a ${nextStatus}`)
+    return { ok: true, message: 'Estado actualizado correctamente.' }
+  }
+
+  const registerDelivery = (orderId, deliveryData) => {
+    const existing = deliveries.find(d => d.orderId === orderId)
+    const newDelivery = {
+      id: existing?.id ?? `del-${Math.random().toString(36).slice(2, 9)}`,
+      orderId,
+      method: deliveryData.method ?? 'envio',
+      company: deliveryData.company ?? '',
+      trackingNumber: deliveryData.trackingNumber ?? '',
+      status: deliveryData.status ?? 'pendiente_coordinacion',
+      estimatedShippingDate: deliveryData.estimatedShippingDate ?? '',
+      estimatedDeliveryDate: deliveryData.estimatedDeliveryDate ?? '',
+      address: deliveryData.address ?? '',
+      contactName: deliveryData.contactName ?? '',
+      contactPhone: deliveryData.contactPhone ?? '',
+      notes: deliveryData.notes ?? '',
+      cost: Number(deliveryData.cost) || 0,
+      updatedAt: nowStamp(),
+    }
+
+    setDeliveries((prev) => {
+      const filtered = prev.filter(d => d.orderId !== orderId)
+      return [...filtered, newDelivery]
+    })
+
+    const order = orders.find(o => o.id === orderId)
+    if (order) {
+      if (Number(deliveryData.cost) > 0 && (!existing || Number(existing.cost) !== Number(deliveryData.cost))) {
+        const transId = `t-${Math.random().toString(36).slice(2, 9)}`
+        const newTrans = {
+          id: transId,
+          orderId,
+          type: 'costo_entrega',
+          amount: Number(deliveryData.cost),
+          currency: 'USD',
+          paymentMethod: order.paymentInfo?.method ?? 'tarjeta',
+          status: 'confirmado',
+          reference: 'Envío',
+          createdAt: nowStamp(),
+        }
+        setTransactions((prev) => [...prev, newTrans])
+      }
+
+      addNotification({
+        userId: order.clientId,
+        type: 'actualizacion_entrega',
+        title: 'Actualización de entrega',
+        message: `El fabricante ha registrado la entrega (${deliveryData.method === 'envio' ? 'Envío a domicilio' : 'Retiro en tienda'}) para tu pedido "${order.designName}". Estado: ${deliveryData.status}.`,
+        relatedEntityId: orderId,
+        relatedEntityType: 'order',
+      })
+
+      if (deliveryData.status === 'enviado' && order.status !== 'enviado') {
+        updateOrderStatus(orderId, 'enviado', 'Pedido enviado por el fabricante', 'Fabricante')
+      } else if (deliveryData.status === 'listo_retiro' && order.status !== 'listo_para_entrega') {
+        updateOrderStatus(orderId, 'listo_para_entrega', 'Pedido listo para retiro', 'Fabricante')
+      } else if (deliveryData.status === 'entregado' && order.status !== 'entregado') {
+        updateOrderStatus(orderId, 'entregado', 'Pedido entregado al cliente', 'Fabricante')
+      }
+    }
+
+    appendLog(`Datos de entrega registrados para pedido ${orderId}`)
+    return { ok: true, message: 'Datos de entrega guardados.' }
+  }
+
+  const submitRating = (ratingData) => {
+    const newRating = {
+      id: `r-${Math.random().toString(36).slice(2, 9)}`,
+      orderId: ratingData.orderId,
+      clientId: ratingData.clientId,
+      manufacturerId: ratingData.manufacturerId,
+      generalRating: Number(ratingData.generalRating) || 5,
+      productQuality: Number(ratingData.productQuality) || 5,
+      communication: Number(ratingData.communication) || 5,
+      deliveryTime: Number(ratingData.deliveryTime) || 5,
+      valueForMoney: Number(ratingData.valueForMoney) || 5,
+      comment: ratingData.comment ?? '',
+      metExpectations: !!ratingData.metExpectations,
+      correctMeasures: !!ratingData.correctMeasures,
+      recommend: !!ratingData.recommend,
+      onTime: !!ratingData.onTime,
+      images: Array.isArray(ratingData.images) ? ratingData.images : [],
+      createdAt: nowStamp(),
+    }
+
+    setRatings((prev) => [...prev, newRating])
+
+    updateOrderStatus(ratingData.orderId, 'finalizado', 'Pedido calificado y finalizado por el cliente', 'Cliente')
+
+    addNotification({
+      userId: ratingData.manufacturerId,
+      type: 'calificacion_recibida',
+      title: '¡Nueva calificación recibida!',
+      message: `Un cliente ha calificado tu trabajo con ${ratingData.generalRating} estrellas. Comentario: "${ratingData.comment}"`,
+      relatedEntityId: ratingData.orderId,
+      relatedEntityType: 'order',
+    })
+
+    appendLog(`Calificación enviada para el pedido ${ratingData.orderId}`)
+    return { ok: true, message: 'Calificación publicada correctamente.' }
+  }
+
+  const addTransaction = ({
+    orderId,
+    type,
+    amount,
+    paymentMethod = 'tarjeta',
+    status = 'confirmado',
+    reference = '',
+  }) => {
+    const newTrans = {
+      id: `t-${Math.random().toString(36).slice(2, 9)}`,
+      orderId,
+      type,
+      amount: Number(amount) || 0,
+      currency: 'USD',
+      paymentMethod,
+      status,
+      reference,
+      createdAt: nowStamp(),
+    }
+    setTransactions((prev) => [...prev, newTrans])
+  }
+
   // HU-09 + HU-08: generar un pedido que registra las personalizaciones elegidas
   // y vincula automáticamente las medidas guardadas del cliente.
   const createOrder = ({
@@ -480,8 +898,12 @@ export function AppProvider({ children }) {
           )
         : null
 
+    const orderId = `o-${Math.random().toString(36).slice(2, 9)}`
+    const isPaid = !!paymentInfo
+    const initialStatus = isPaid ? 'pagado' : 'recibido'
+
     const order = {
-      id: `o-${Math.random().toString(36).slice(2, 9)}`,
+      id: orderId,
       clientId,
       clientName: client.name,
       designId: design.id,
@@ -498,7 +920,7 @@ export function AppProvider({ children }) {
       measures: explicitMeasures ?? (linkMeasures ? { ...(client.measures ?? {}) } : null),
       deliveryInfo,
       paymentInfo,
-      status: 'recibido',
+      status: initialStatus,
       createdAt: nowStamp(),
     }
 
@@ -506,6 +928,81 @@ export function AppProvider({ children }) {
     appendLog(
       `Pedido generado por ${client.email}: ${design.name} (${modifications.length} personalizaciones)`,
     )
+
+    // Sprint 5 additions
+    const initialHistory = [
+      {
+        id: `osh-${Math.random().toString(36).slice(2, 9)}`,
+        orderId,
+        status: 'recibido',
+        description: 'Solicitud de confección creada por el cliente',
+        createdAt: nowStamp(),
+        updatedBy: client.name
+      }
+    ]
+    if (isPaid) {
+      initialHistory.push({
+        id: `osh-${Math.random().toString(36).slice(2, 9)}`,
+        orderId,
+        status: 'pendiente_pago',
+        description: 'Pendiente de confirmación de pago',
+        createdAt: nowStamp(),
+        updatedBy: 'Sistema'
+      })
+      initialHistory.push({
+        id: `osh-${Math.random().toString(36).slice(2, 9)}`,
+        orderId,
+        status: 'pagado',
+        description: `Pago confirmado por un monto de $${order.total.toFixed(2)} (Ref Card: ${paymentInfo?.cardNumberMasked || 'N/A'})`,
+        createdAt: nowStamp(),
+        updatedBy: 'Sistema'
+      })
+    }
+    setOrderStatusHistory((prev) => [...prev, ...initialHistory])
+
+    const newDelivery = {
+      id: `del-${Math.random().toString(36).slice(2, 9)}`,
+      orderId,
+      method: deliveryInfo ? 'envio' : 'retiro',
+      company: '',
+      trackingNumber: '',
+      status: 'pendiente_coordinacion',
+      estimatedShippingDate: '',
+      estimatedDeliveryDate: '',
+      address: deliveryInfo?.reference || '',
+      contactName: deliveryInfo?.recipientName || client.name,
+      contactPhone: deliveryInfo?.phone || '',
+      notes: '',
+      cost: 0,
+    }
+    setDeliveries((prev) => [...prev, newDelivery])
+
+    if (isPaid) {
+      const lastDigits = paymentInfo?.cardNumber ? paymentInfo.cardNumber.replace(/\D/g, '').slice(-4) : '1234'
+      const newTransaction = {
+        id: `t-${Math.random().toString(36).slice(2, 9)}`,
+        orderId,
+        type: 'pago',
+        amount: order.total,
+        currency: 'USD',
+        paymentMethod: paymentInfo?.method || 'tarjeta',
+        status: 'confirmado',
+        reference: lastDigits,
+        createdAt: nowStamp()
+      }
+      setTransactions((prev) => [...prev, newTransaction])
+    }
+
+    if (order.manufacturerId) {
+      addNotification({
+        userId: order.manufacturerId,
+        type: 'nuevo_pedido',
+        title: '¡Nuevo pedido recibido!',
+        message: `El cliente ${client.name} ha solicitado tu diseño "${design.name}" por un total de $${order.total.toFixed(2)}.`,
+        relatedEntityId: orderId,
+        relatedEntityType: 'order',
+      })
+    }
 
     return { ok: true, message: 'Pedido generado correctamente.', order }
   }
@@ -562,6 +1059,19 @@ export function AppProvider({ children }) {
     setMessages((prev) => [...prev, message])
     appendLog(`Mensaje enviado en pedido ${order.id} por ${sender.email}`)
 
+    // Sprint 5: Notify the other party
+    const recipientId = senderId === order.clientId ? order.manufacturerId : order.clientId
+    if (recipientId) {
+      addNotification({
+        userId: recipientId,
+        type: 'nuevo_mensaje',
+        title: `Nuevo mensaje de ${sender.name}`,
+        message: cleanedText || 'Te ha enviado un archivo adjunto.',
+        relatedEntityId: orderId,
+        relatedEntityType: 'chat',
+      })
+    }
+
     return { ok: true, message: 'Mensaje enviado.', chatMessage: message }
   }
 
@@ -592,6 +1102,20 @@ export function AppProvider({ children }) {
     createOrder,
     sendOrderMessage,
     createAdminByPrincipal,
+    notifications,
+    orderStatusHistory,
+    deliveries,
+    ratings,
+    transactions,
+    addNotification,
+    markNotificationAsRead,
+    markAllNotificationsAsRead,
+    deleteNotification,
+    updateOrderStatus,
+    registerDelivery,
+    submitRating,
+    addTransaction,
+    seedMockOrderForTesting,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

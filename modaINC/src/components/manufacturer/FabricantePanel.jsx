@@ -20,6 +20,8 @@ export default function FabricantePanel({
   messages = [],
   sendOrderMessage,
   updateShowcase,
+  onNavigateToOrder,
+  onGoToHistory,
 }) {
   const ownShowcase = useMemo(() => {
     return showcases.find((showcase) => showcase.manufacturerId === currentUser.id)
@@ -590,7 +592,7 @@ export default function FabricantePanel({
         </div>
       </article>
 
-      <ReceivedOrders orders={ownOrders} />
+      <ReceivedOrders orders={ownOrders} onNavigateToOrder={onNavigateToOrder} onGoToHistory={onGoToHistory} />
 
       <OrderMessaging
         currentUser={currentUser}

@@ -18,6 +18,8 @@ export default function ClientePanel({
   updateMeasures,
   updatePreferences,
   sendOrderMessage,
+  onNavigateToOrder,
+  onGoToHistory,
 }) {
   const myOrders = orders.filter((order) => order.clientId === currentUser?.id)
 
@@ -43,10 +45,21 @@ export default function ClientePanel({
 
       {/* Pedidos generados */}
       <article className="rounded-3xl border border-amber-900/10 bg-white p-5 md:p-6">
-        <h3 className="font-semibold text-amber-950">Mis pedidos</h3>
-        <p className="text-sm text-amber-900/75">
-          Pedidos generados con sus personalizaciones y medidas vinculadas.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-amber-900/5 pb-3">
+          <div>
+            <h3 className="font-semibold text-amber-950">Mis pedidos</h3>
+            <p className="text-sm text-amber-900/75">
+              Pedidos generados con sus personalizaciones y medidas vinculadas.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onGoToHistory}
+            className="rounded-xl border border-amber-900/20 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-50"
+          >
+            Ver historial completo
+          </button>
+        </div>
 
         {myOrders.length ? (
           <div className="mt-4 grid gap-3">
@@ -105,9 +118,18 @@ export default function ClientePanel({
                   </div>
                 </div>
 
-                <p className="mt-3 text-right text-sm font-semibold text-amber-950">
-                  Total: ${order.total.toFixed(2)}
-                </p>
+                <div className="mt-3 flex justify-between items-center border-t border-amber-900/5 pt-3">
+                  <p className="text-sm font-semibold text-amber-950">
+                    Total: ${order.total.toFixed(2)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToOrder?.(order.id)}
+                    className="rounded-xl bg-amber-900 px-3 py-1.5 text-xs font-semibold text-amber-50 transition hover:bg-amber-800"
+                  >
+                    Ver seguimiento y entrega
+                  </button>
+                </div>
               </div>
             ))}
           </div>

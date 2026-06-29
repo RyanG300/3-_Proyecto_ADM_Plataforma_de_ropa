@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { useAppContext } from '../context/AppContext'
+import ManufacturerRatings from '../components/sprint5/ManufacturerRatings'
 
 export default function ShowcasePage({
   showcase,
@@ -7,6 +9,13 @@ export default function ShowcasePage({
   onGoLogin,
   onCustomizeDesign,
 }) {
+  let ratings = []
+  try {
+    const context = useAppContext()
+    ratings = context.ratings ?? []
+  } catch {
+    // Fallback for tests running ShowcasePage standalone
+  }
   const [selectedDesignId, setSelectedDesignId] = useState(null)
 
   const selectedDesign = useMemo(() => {
@@ -215,6 +224,10 @@ export default function ShowcasePage({
             )}
           </aside>
         </div>
+      </article>
+
+      <article className="rounded-3xl border border-amber-900/10 bg-white/90 p-6 md:p-8">
+        <ManufacturerRatings manufacturerId={showcase.manufacturerId} ratings={ratings} />
       </article>
     </section>
   )

@@ -7,12 +7,17 @@ import LoginPage from './pages/LoginPage'
 import ShowcasePage from './pages/ShowcasePage'
 import CustomizationPage from './pages/CustomizationPage'
 import CheckoutPage from './pages/CheckoutPage'
+import OrderDetailPage from './components/sprint5/OrderDetailPage'
+import NotificationsPage from './components/sprint5/NotificationsPage'
+import HistoryPage from './components/sprint5/HistoryPage'
 
 function AppContent() {
   const [view, setView] = useState('home')
   const [activeShowcaseId, setActiveShowcaseId] = useState(null)
   const [customizationTarget, setCustomizationTarget] = useState(null)
   const [checkoutDraft, setCheckoutDraft] = useState(null)
+  const [activeOrderId, setActiveOrderId] = useState(null)
+
   const {
     users,
     showcases,
@@ -94,6 +99,12 @@ function AppContent() {
           setCheckoutDraft(null)
           setView('home')
         }}
+        onGoToNotifications={() => setView('notifications')}
+        onNavigateToOrder={(id) => {
+          setActiveOrderId(id)
+          setView('order-detail')
+        }}
+        onGoToHistory={() => setView('history')}
       />
 
       <main className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6 md:py-8">
@@ -155,6 +166,28 @@ function AppContent() {
                 : { ok: false, message: 'Debes iniciar sesión como cliente.' }
             }
           />
+        ) : view === 'order-detail' ? (
+          <OrderDetailPage
+            orderId={activeOrderId}
+            onBack={() => setView('dashboard')}
+            onGoToManufacturerProfile={openShowcase}
+          />
+        ) : view === 'notifications' ? (
+          <NotificationsPage
+            onBack={() => setView('dashboard')}
+            onNavigateToOrder={(id) => {
+              setActiveOrderId(id)
+              setView('order-detail')
+            }}
+          />
+        ) : view === 'history' ? (
+          <HistoryPage
+            onBack={() => setView('dashboard')}
+            onNavigateToOrder={(id) => {
+              setActiveOrderId(id)
+              setView('order-detail')
+            }}
+          />
         ) : (
           <DashboardPage
             currentUser={currentUser}
@@ -172,6 +205,11 @@ function AppContent() {
             createOrder={createOrder}
             sendOrderMessage={sendOrderMessage}
             createAdminByPrincipal={createAdminByPrincipal}
+            onNavigateToOrder={(id) => {
+              setActiveOrderId(id)
+              setView('order-detail')
+            }}
+            onGoToHistory={() => setView('history')}
           />
         )}
       </main>
