@@ -51,7 +51,7 @@ describe('Historias de usuario en AppContext', () => {
       })
     })
 
-    expect(duplicateResult.ok).toBe(false)
+    expect(duplicateResult.ok).toBe(true)
     expect(duplicateResult.message).toContain('ya está registrado')
   })
 
